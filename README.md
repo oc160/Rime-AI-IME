@@ -1,109 +1,114 @@
 # rime-llm-reranker-win
 
-**Windows 版 Rime 输入法 LLM 候选词重排**：词库出候选，本地大模型根据上下文把最合适的词顶到第一——打字路径零阻塞（异步文件握手架构）。
+**English** | [简体中文](README.zh-CN.md)
 
-基于 [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)（macOS 版，MIT）移植起步，架构已重构为异步 sidecar，并附带完整的任务微调训练管线。
+**LLM candidate reranking for the Rime input method on Windows**: the dictionary proposes candidates, a local LLM reads the context and pushes the best word to the top — with zero blocking on the typing path (async file-handshake architecture).
 
-> ## ⚠️ 崩溃风险警告（读我）
+Started as a port of [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker) (macOS, MIT), then rearchitected around an async sidecar, plus a complete task-specific fine-tuning pipeline.
+
+> ## ⚠️ Crash-risk warning — read this first
 >
-> 本项目把代码挂进输入法击键路径——Windows 上风险最高的位置之一：TSF 框架下，宿主应用的**每一个按键**都同步等待输入法返回，路径上没有任何超时容忍。
+> This project hooks code into the IME keystroke path — one of the highest-risk spots on Windows: under TSF, the host application **synchronously waits for the IME on every single keystroke**, and the path has zero timeout tolerance.
 >
-> - **发生过真实事故**：早期同步版本曾在两台机器上造成系统级 UI 冻结（整个桌面卡死，只能强制重启）。取证见[事故报告 I](docs/incident-2026-10-12-2060-host.md)、[事故报告 II](docs/incident-2026-10-13-t10-typing.md)
-> - **崩溃问题刚刚解决**：现行 v8 异步架构已把击键路径压缩到微秒级文件读写，实测连续打字无冻结——但**修复时间尚短，不排除仍存在严重 bug**
-> - **底线自保**：永远保留第二个输入法（`Win+空格` 随时切走）；部署前备份 `%APPDATA%\Rime`；本项目为实验性质，对数据与稳定性不作任何保证
+> - **Real incidents happened**: the early synchronous version froze the system UI on two machines (whole desktop hung; only a forced restart helped). Forensics in [incident report I](docs/incident-2026-10-12-2060-host.md) and [incident report II](docs/incident-2026-10-13-t10-typing.md) (both in Chinese)
+> - **The freeze was just fixed**: the current v8 async architecture reduces the keystroke path to microsecond-level file I/O, verified freeze-free in real typing — but **the fix is young and serious bugs cannot be ruled out**
+> - **Protect yourself**: always keep a second IME installed (`Win+Space` is your escape hatch); back up `%APPDATA%\Rime` before deploying; this is experimental software with no warranty of any kind
 
 ```
-① 候选生成层   rime-ice 词库（雾凇拼音）—— 整句组词 + 字词候选 Top5
-② 重排层       rime.lua v8 异步 filter
-               击键路径只做微秒级文件读写：
-               打完词 → 写 req.json 立即返回 → 下一键读 resp.json 应用重排
-                    ↕ llm_rpc/ 文件握手
-               sidecar 独立进程 → llama-server（OpenAI 协议）本地推理
-               ◆ 推理服务挂掉 = 安全直通词库顺序，打字完全无感
-③ 模型层       Qwen3.5-0.8B + LoRA 任务微调（训练管线见 training/）
-               用户真实选择(USER_PAIR)自动落盘 → 个性化训练数据飞轮
+① Candidate layer   rime-ice dictionary — sentence composition + top-5 word candidates
+② Rerank layer      rime.lua v8 async filter
+                    The keystroke path only does microsecond file I/O:
+                    word committed → write req.json, return immediately
+                    → next keystroke reads resp.json and applies the rerank
+                         ↕ llm_rpc/ file handshake
+                    sidecar process → llama-server (OpenAI protocol), local inference
+                    ◆ inference server dead = safe passthrough to dictionary order
+③ Model layer       Qwen3.5-0.8B + LoRA task fine-tune (pipeline in training/)
+                    Real user selections (USER_PAIR) logged automatically
+                    → personalization training-data flywheel
 ```
 
-> **架构动机（真实事故）**：早期版本把同步模型查询（~300ms）放在击键路径上，隔离测试全绿，真人打字 40 秒后 explorer 挂起——Windows TSF 下应用每次击键都同步等输入法返回，路径上没有任何容忍度。完整取证见 [docs/incident-2026-10-13-t10-typing.md](docs/incident-2026-10-13-t10-typing.md)。
+> **Why this architecture (a real incident)**: an early version put synchronous model queries (~300 ms) on the keystroke path. Isolated tests were all green; 40 seconds into real human typing, explorer hung — under Windows TSF every keystroke synchronously waits for the IME, and the path has no tolerance whatsoever. Full forensics in [docs/incident-2026-10-13-t10-typing.md](docs/incident-2026-10-13-t10-typing.md) (Chinese).
 
-## ⚠️ 安装前必读
+## ⚠️ Read before installing
 
-1. **必须保留至少两个输入法**（如微软拼音 + 小狼毫）。唯一输入法 = 单点故障，出问题时没有退路（`Win+空格` 随时切换是保命键）。
-2. **必须预热**：部署后第一次切到小狼毫会触发方案冷加载（数秒一次性卡顿），先在记事本预热再正式使用。
-3. **部署时杀干净 WeaselServer / WeaselDeployer 进程再部署**，多实例会互相改写配置（血泪教训，详见[事故报告 I](docs/incident-2026-10-12-2060-host.md)）。
-4. 本项目在 Windows 10 + Weasel 0.17.0 上开发测试；其他环境未验证。
+1. **Always keep at least two IMEs installed** (e.g. Microsoft Pinyin + Weasel). A single IME is a single point of failure with no way out (`Win+Space` is your lifeline).
+2. **Always prewarm**: the first switch to Weasel after a deploy triggers a one-off cold load of the schema (several seconds of stutter); warm it up in Notepad before real use.
+3. **Kill every WeaselServer / WeaselDeployer process before deploying** — multiple instances rewrite each other's config (hard-learned lesson, see incident report I).
+4. Developed and tested on Windows 10 + Weasel 0.17.0; other environments unverified.
 
-## 快速开始
+## Quick start
 
-前置：[小狼毫 Weasel](https://github.com/rime/weasel) + Python 3.10+ + [llama.cpp](https://github.com/ggml-org/llama.cpp)（llama-server）+ 一个 GGUF 模型（本项目基线用 Qwen3.5-0.8B-Q8_0）。
+Prerequisites: [Weasel (小狼毫)](https://github.com/rime/weasel) + Python 3.10+ + [llama.cpp](https://github.com/ggml-org/llama.cpp) (llama-server) + a GGUF model (this project's baseline: Qwen3.5-0.8B-Q8_0).
 
 ```bash
-# 1. 取得雾凇拼音（含词库，GPL-3.0 项目请自行获取，不入本仓库）
+# 1. Fetch rime-ice (dictionary included; GPL-3.0 project — obtain it yourself, not bundled here)
 git clone --depth 1 https://github.com/iDvel/rime-ice.git tools/rime-ice
 
-# 2. 启动推理服务（CPU，端口 8081）
+# 2. Start the inference server (CPU, port 8081)
 tools/llama/llama-server.exe -m models/Qwen3.5-0.8B-Q8_0.gguf \
     --port 8081 --alias main -c 2048 -ngl 0 -t 6 --jinja --no-webui
 
-# 3. 启动 sidecar（默认 RPC 目录 = %APPDATA%/Rime/llm_rpc，与 lua 一致）
+# 3. Start the sidecar (default RPC dir = %APPDATA%/Rime/llm_rpc, matching the lua filter)
 python tools/sidecar.py --log sidecar.log
 
-# 4. 安装输入法配置
-#    rime/rime.lua + rime_ice.custom.yaml + tools/rime-ice 的方案文件 → %APPDATA%\Rime\
-#    default.custom.yaml 的 schema_list 只留 rime_ice
-#    然后重新部署（先杀干净 Weasel 进程）
+# 4. Install the IME config
+#    rime/rime.lua + rime_ice.custom.yaml + schema files from tools/rime-ice → %APPDATA%\Rime\
+#    keep only rime_ice in default.custom.yaml's schema_list
+#    then redeploy (kill all Weasel processes first)
 
-# 5. 预热：记事本 → Win+空格 切小狼毫 → 等一次性冷加载完成 → 打一个词
+# 5. Prewarm: Notepad → Win+Space to Weasel → wait out the one-off cold load → type a word
 ```
 
-确认工作：`%APPDATA%\Rime\rime_llm.log` 出现 `v8-async started` 和 `RPC_OUT/RPC_IN` 条目；`sidecar.log` 出现推理延迟记录。
+Sanity check: `%APPDATA%\Rime\rime_llm.log` shows `v8-async started` and `RPC_OUT/RPC_IN` entries; `sidecar.log` shows inference latencies.
 
-## 训练你自己的重排模型
+## Train your own reranking model
 
 ```bash
-# 1. 造数据：语料 × 词库同音组挖矿（wiki 语料示例，任意中文纯文本均可）
+# 1. Generate data: corpus × dictionary homophone-group mining (any Chinese plain text works)
 python training/gen_synthetic.py corpus.txt -n 150000 -o cases.jsonl
 
-# 2. 防泄漏过滤 + 切分（判据与 eval/bench 的 40 条评测集互斥，永不脱钩）
+# 2. Leak-proof filtering + split (kept disjoint from the 40-case eval set in eval/, never decoupled)
 python training/prep_train_data.py cases.jsonl -o data/
 
-# 3. LoRA SFT（提示词与部署逐字一致；含大词表显存优化：左 padding + logits_to_keep）
+# 3. LoRA SFT (prompts byte-identical to deployment; large-vocab VRAM optimizations: left padding + logits_to_keep)
 HF_HOME=./hf_cache python training/train_sft.py \
     --train data/train.jsonl --val data/val.jsonl \
     --out-adapter adapter_v1 --out-merged merged_v1 --epochs 2
 
-# 4. 转 GGUF 到 models/ + 40 条基准验收（bench 按相对 models/ 找模型；基线：裸 0.8B = 50%，2B = 80%）
+# 4. Convert to GGUF into models/ + 40-case benchmark gate
+#    (bench resolves relative names against models/; baselines: bare 0.8B = 50%, 2B = 80%)
 python tools/llama.cpp/convert_hf_to_gguf.py merged_v1 --outtype q8_0 --outfile models/ime-v1.gguf
 python eval/bench_rerank.py ime-v1.gguf
 ```
 
-与其他 GPU 任务共用机器？`tools/watcher_train.py` 会等占用方下线后自动跑完整链（训练→转换→验收）。
+Sharing the machine with other GPU jobs? `tools/watcher_train.py` waits for them to go idle, then runs the whole chain (train → convert → benchmark) automatically.
 
-## 评测
+## Evaluation
 
-- `eval/bench_rerank.py`：40 条拼音歧义题（语境反转/成语接续/专业词/无上下文），自动起停 llama-server，输出命中率与延迟分位
-- `eval/replay_eval.py`：**隔离回放引擎**——ctypes 加载 Weasel 的 rime.dll，在用户目录副本里回放按键流，完全不碰前台。上线前的一切验证都在这里做（本项目的铁律：隔离通过 ≠ 线上安全，但隔离不通过绝不上线）
+- `eval/bench_rerank.py`: 40 pinyin-ambiguity cases (context flips / idiom continuations / domain words / no context), auto-starts and stops llama-server, reports hit rate and latency percentiles
+- `eval/replay_eval.py`: **isolated replay engine** — loads Weasel's rime.dll via ctypes and replays keystroke streams inside a copy of the user directory, never touching your foreground session. All pre-release validation happens here (project rule: isolated-pass ≠ production-safe, but isolated-fail means never ship)
 
-| 模型 | 40 条命中 | 说明 |
+| Model | 40-case hit rate | Notes |
 |---|---|---|
-| Qwen3.5-2B Q4_K_M（零样本） | 80% | 教师档参考 |
-| Qwen3.5-0.8B Q8（零样本） | 50% | 微调起点 |
-| 0.8B + LoRA（本管线） | 目标 ≥75% | 训练中 |
+| Qwen3.5-2B Q4_K_M (zero-shot) | 80% | teacher-tier reference |
+| Qwen3.5-0.8B Q8 (zero-shot) | 50% | fine-tuning starting point |
+| 0.8B + LoRA (this pipeline) | target ≥75% | training in progress |
 
-## 路线图
+## Roadmap
 
-- **Phase A**：0.8B 任务微调上线；长句重排（`max_preedit_len` 放宽）让 LLM 裁判整句候选
-- **Phase B**：每日滚动个性化（USER_PAIR 飞轮 → 夜间 LoRA → 黄金集回归闸门 → 达标换模型）
-- **Phase C（终局）**：30-100M 拼音专用打分器（[Transformers4IME](https://github.com/VisualJoyce/Transformers4IME) PinyinGPT 热启动蒸馏），ONNX 进程内加载——IPC 归零，重排变 1-5ms 算术
+- **Phase A**: ship the 0.8B task fine-tune; long-sentence reranking (relaxing `max_preedit_len`) so the LLM judges whole-sentence candidates
+- **Phase B**: rolling daily personalization (USER_PAIR flywheel → nightly LoRA → golden-set regression gate → swap the model when it passes)
+- **Phase C (endgame)**: a 30-100M pinyin-specific scorer (warm-started from [Transformers4IME](https://github.com/VisualJoyce/Transformers4IME) PinyinGPT, then distilled), loaded in-process via ONNX — IPC eliminated, reranking becomes 1-5 ms of arithmetic
 
-## 致谢与许可证
+## Credits & license
 
-- **[FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)**（MIT）：本项目的前身。核心思路「LLM 裁判 Top5 候选」与提示词格式源自它；`rime.lua` 头部保留其 lineage 声明
-- **[iDvel/rime-ice](https://github.com/iDvel/rime-ice)**（GPL-3.0）：雾凇拼音词库与方案。**不入本仓库**，请自行获取
-- **[Transformers4IME](https://github.com/VisualJoyce/Transformers4IME) / [RIME-LMDG 万象语法模型](https://github.com/amzxyz/RIME-LMDG)**：Phase C 与语法模型层的参考
-- 本仓库代码：MIT（见 [LICENSE](LICENSE)）
+- **[FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)** (MIT): the predecessor of this project. The core idea "an LLM judges the top-5 candidates" and the prompt format come from it; `rime.lua` keeps the lineage note in its header
+- **[iDvel/rime-ice](https://github.com/iDvel/rime-ice)** (GPL-3.0): the Mist pinyin dictionary and schema. **Not bundled in this repo** — obtain it yourself
+- **[Transformers4IME](https://github.com/VisualJoyce/Transformers4IME) / [RIME-LMDG](https://github.com/amzxyz/RIME-LMDG)**: references for Phase C and the grammar-model layer
+- Code in this repo: MIT (see [LICENSE](LICENSE))
 
-## 文档
+## Documentation (Chinese)
 
-- [事故报告 I：2060 主机四次全桌面冻结](docs/incident-2026-10-12-2060-host.md)
-- [事故报告 II：T10 真实打字冻结与异步重构决策](docs/incident-2026-10-13-t10-typing.md)
+- [Incident report I: four full-desktop freezes on the 2060 host](docs/incident-2026-10-12-2060-host.md)
+- [Incident report II: the T10 real-typing freeze and the async-rewrite decision](docs/incident-2026-10-13-t10-typing.md)
