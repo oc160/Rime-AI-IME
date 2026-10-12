@@ -72,8 +72,8 @@ HF_HOME=./hf_cache python training/train_sft.py \
     --train data/train.jsonl --val data/val.jsonl \
     --out-adapter adapter_v1 --out-merged merged_v1 --epochs 2
 
-# 4. 转 GGUF + 40 条基准验收（基线：裸 0.8B = 50%，2B = 80%）
-python tools/llama.cpp/convert_hf_to_gguf.py merged_v1 --outtype q8_0 --outfile ime-v1.gguf
+# 4. 转 GGUF 到 models/ + 40 条基准验收（bench 按相对 models/ 找模型；基线：裸 0.8B = 50%，2B = 80%）
+python tools/llama.cpp/convert_hf_to_gguf.py merged_v1 --outtype q8_0 --outfile models/ime-v1.gguf
 python eval/bench_rerank.py ime-v1.gguf
 ```
 
