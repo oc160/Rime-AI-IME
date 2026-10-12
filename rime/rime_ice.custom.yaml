@@ -1,0 +1,22 @@
+# rime_ice.custom.yaml — 雾凇拼音 · LLM 候选词重排配置（Windows · v8 异步版）
+# 放置路径：%APPDATA%\Rime\rime_ice.custom.yaml
+# 修改后需重新部署
+# v8 架构：击键路径零阻塞（文件握手），推理由 sidecar.py 在独立进程完成。
+#   部署顺序：先启动 sidecar（不在击键路径），再启用本 filter。
+
+patch:
+  # ── LLM 重排层（v8 异步文件握手）──
+  "engine/filters/@next": lua_filter@llm_reranker
+  "llm_reranker":
+    enabled: false
+    # RPC 目录（lua 与 sidecar.py --dir 必须一致）；缺省 = 用户目录/llm_rpc（纯 ASCII 时）
+    # rpc_dir: "C:/Windows/Temp/llm_rpc"
+    max_candidates: 5
+    min_syllables: 2
+    max_preedit_len: 10
+    max_rerank_pos: 5
+    resp_fresh_seconds: 3
+    debug_log: true
+    collect_training_data: true
+    collect_user_pairs: true
+    collect_llm_pairs: false

@@ -1,0 +1,23 @@
+# 大文件不入库
+models/
+corpus/
+data/
+hf_cache/
+*.gguf
+*.gram
+
+# 运行时产物
+__pycache__/
+*.pyc
+replay_work/
+reports/
+sidecar*.log
+llm*.log
+backup_*/
+*.zip
+
+# 第三方（各自获取，见 README）
+tools/rime-ice/
+tools/llama/
+tools/llama.cpp/
+tools/llama-cuda/
