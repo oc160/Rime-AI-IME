@@ -5,6 +5,8 @@
 #   部署顺序：先启动 sidecar（不在击键路径），再启用本 filter。
 
 patch:
+  # ── 回删追踪（用户上屏后 5 秒内连按退格删完整词 → 记 retract 墓碑，供训练降权/过滤）──
+  "engine/processors/@before 0": lua_processor@llm_retract_tracker
   # ── LLM 重排层（v8 异步文件握手）──
   "engine/filters/@next": lua_filter@llm_reranker
   # 方案选单（F4 / Ctrl+`）里的「AI重排」开关，reset:1 = 默认开
@@ -16,10 +18,10 @@ patch:
     enabled: false
     # RPC 目录（lua 与 sidecar.py --dir 必须一致）；缺省 = 用户目录/llm_rpc（纯 ASCII 时）
     # rpc_dir: "C:/Windows/Temp/llm_rpc"
-    max_candidates: 5
+    max_candidates: 9
     min_syllables: 2
     max_preedit_len: 30
-    max_rerank_pos: 5
+    max_rerank_pos: 9
     resp_fresh_seconds: 3
     debug_log: true
     collect_training_data: true

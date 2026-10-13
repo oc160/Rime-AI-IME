@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **回删追踪（retraction tombstone）**：上屏后 5 秒内连按退格删完整词，自动记录
+  retract 墓碑（引用原 USER_PAIR 的 seq）到 rime_train.jsonl——训练时对被回删的
+  选择降权/过滤。yaml 增挂 lua_processor@llm_retract_tracker；训练日志字段增加
+  ts/seq，USER_PAIR 与 retract 通过 seq 关联
+- **候选窗口 5→9 / 重排位 5→9**（线上验证）：更宽的数据飞轮收集面
+- **显示型联想评测**（docs/prediction-mask-eval.md）：Qwen3.5-2B/4B vs
+  Spark-X2.5-4B 三家同卷（200 条领域掩码，统一提示词+同一裁判），
+  严格合理率 44% / 76% / 60%——烘库引擎选定 Qwen3.5-4B；新增
+  eval/mask_eval.py + eval/mask_judge.py 统一评测与判分工具
+- 后训练路线确定：先 4B-LoRA（85%+ 目标）再 0.8B 蒸馏（活推理/个性化快烘）
+
 ## v0.1.0（2026-10-13）
 
 首个功能版本：异步 sidecar 架构 + LoRA 任务微调全管线 + 首个微调模型。

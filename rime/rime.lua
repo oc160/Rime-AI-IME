@@ -103,6 +103,10 @@ end
 
 -- ─── 训练数据日志（数据飞轮，与 v7 相同） ──────────────────
 local TRAIN_LOG_PATH = USER_DIR..'/rime_train.jsonl'
+local _train_seq = 0
+local _last_user_seq = 0
+local _retract_watch = nil
+local _bs_count = 0
 
 local function utf8_tail(s, max_bytes)
   if #s <= max_bytes then return s end
@@ -134,13 +138,18 @@ local function log_train_pair(context, pinyin, positive, negative, source, meta)
   if not _cfg.collect_train then return end
   if not positive or not negative or positive == negative then return end
   if positive == '' or negative == '' then return end
-  local payload = { context = context, pinyin = pinyin,
+  _train_seq = _train_seq + 1
+  local payload = { ts = os.time(), seq = _train_seq,
+                    context = context, pinyin = pinyin,
                     positive = positive, negative = negative, source = source }
   if meta then for k, v in pairs(meta) do payload[k] = v end end
   local record = json_encode(payload)
   if not record then return end
   local f = io.open(TRAIN_LOG_PATH, 'a')
   if f then f:write(record..'\n'); f:close() end
+  if source == 'user_accept' or source == 'user_select' then
+    _last_user_seq = _train_seq
+  end
 end
 
 local function index_of(list, word)
@@ -233,8 +242,7 @@ local function find_in_texts(texts, word)
 end
 
 -- ─── 模块级状态（必须在引用它的函数之前声明） ──────────────
-local committed_buffer = ''
-local _last_commit_text = ''
+local committed_buffer = ''local _last_commit_text = ''
 local _logged          = false
 local _cache      = {}
 local _cache_size = 0
@@ -334,7 +342,14 @@ local function update_context_from_history(env)
     committed_buffer = utf8_tail(committed_buffer .. commit_text, 1200)
     _last_commit_text = latest
     dlog('COMMIT: '..commit_text..' | buf_len='..#committed_buffer)
+    local seq_before = _last_user_seq
     log_user_selection_pairs(snap, selected_candidate_text(snap, latest))
+    if _last_user_seq ~= seq_before then
+      local chars = math.max(1, math.ceil(#commit_text / 3))
+      _retract_watch = { word = commit_text, ts = os.time(),
+                         seq = _last_user_seq, chars = chars }
+      _bs_count = 0
+    end
     _cache = {}
     _cache_size = 0
     _pending = {}
@@ -494,5 +509,32 @@ end
 
 -- 废弃的按键处理器（保留空函数）
 function llm_context_tracker(key_event, env)
+  return 2  -- kNoop
+end
+
+-- 悔改信号：上屏后的退格删除 -> retract 墓碑（训练侧按 ref_seq 丢弃该 pair）
+local KEY_BACKSPACE = 0xFF08
+
+function llm_retract_tracker(key_event, env)
+  if key_event.keycode == KEY_BACKSPACE and not key_event:release() then
+    local composing = false
+    pcall(function() composing = env.engine.context:is_composing() end)
+    if composing then
+      _bs_count = 0
+    elseif _retract_watch and os.time() - _retract_watch.ts <= 5 then
+      _bs_count = _bs_count + 1
+      if _bs_count >= _retract_watch.chars then
+        local rec = json_encode({ type = 'retract', ref_seq = _retract_watch.seq,
+                                  word = _retract_watch.word, ts = os.time() })
+        if rec then
+          local f = io.open(TRAIN_LOG_PATH, 'a')
+          if f then f:write(rec..string.char(10)); f:close() end
+        end
+        dlog('RETRACT: '.._retract_watch.word..' (seq '.._retract_watch.seq..')')
+        _retract_watch = nil
+        _bs_count = 0
+      end
+    end
+  end
   return 2  -- kNoop
 end
