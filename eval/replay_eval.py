@@ -158,7 +158,9 @@ CASES = [
 
 # ── 引擎封装 ────────────────────────────────────────────────
 def _rmtree(path):
-    """Windows 下 .git pack 文件是只读的，rmtree 需要先去掉只读位"""
+    """Windows 下 .git pack 文件是只读的，rmtree 需要先去掉只读位；路径不存在则静默跳过"""
+    if not os.path.exists(path):
+        return
     import stat
     def _onexc(fn, p, exc):
         os.chmod(p, stat.S_IWRITE)

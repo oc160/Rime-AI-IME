@@ -1,0 +1,4 @@
+{
+  "gguf": "models/qwen35-08b-ime-v1-Q8_0.gguf",
+  "llama_bin": "tools/llama/llama-server.exe"
+}

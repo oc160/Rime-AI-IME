@@ -41,7 +41,9 @@ def _default_models():
 MODELS = [m if os.path.isabs(m) else os.path.join(MODEL_DIR, m) for m in sys.argv[1:]] \
          or [os.path.join(MODEL_DIR, n) for n in _default_models()]
 PORT = 8082
-URL = f"http://127.0.0.1:{PORT}/v1/chat/completions"
+URL = os.environ.get("BENCH_URL", f"http://127.0.0.1:{PORT}/v1/chat/completions")
+# BENCH_URL 设置时为"外部服务模式"：不起停自己的 llama-server，直连现成端点
+# （用于 27B CPU 实例等已由外部启动的考场）
 
 # ── 数据集：(上下文, 拼音, 候选[5], 期望首选) ──────────────
 CASES = [
@@ -168,14 +170,16 @@ def main():
     print(f"server: {SERVER}")
     raw_path = os.path.join(ROOT, "reports", "bench_raw.jsonl")
     summary = []
-    with open(raw_path, "w", encoding="utf-8") as raw:
+    with open(raw_path, "a", encoding="utf-8") as raw:   # 追加：保留历史基线原始数据
         for model in MODELS:
-            print(f"\n===== {model} =====")
-            try:
-                proc = start_server(model)
-            except Exception as e:
-                print("  启动失败:", e)
-                continue
+            print(f"\n===== {os.path.basename(model)} =====")
+            proc = None
+            if not os.environ.get("BENCH_URL"):
+                try:
+                    proc = start_server(model)
+                except Exception as e:
+                    print("  启动失败:", e)
+                    continue
             try:
                 for mode in ("list", "single"):
                     # 预热 3 次（首问含模板编译/缓存填充）
@@ -195,7 +199,7 @@ def main():
                             empty += 1
                         if hit:
                             hits += 1
-                        raw.write(json.dumps({"model": model, "mode": mode, "ctx": ctx, "pinyin": py,
+                        raw.write(json.dumps({"model": os.path.basename(model), "mode": mode, "ctx": ctx, "pinyin": py,
                                               "cands": cands, "expected": exp, "content": content,
                                               "top": top, "hit": hit, "ms": round(ms, 1)},
                                              ensure_ascii=False) + "\n")
@@ -208,9 +212,11 @@ def main():
                     print(f"  [{mode:6s}] 命中 {hits}/{n} ({row['hit_rate']:.0%})  空回复 {empty}"
                           f"  延迟 mean {row['mean_ms']}ms / P50 {row['p50_ms']}ms / P95 {row['p95_ms']}ms")
             finally:
-                stop_server(proc)
+                if proc:
+                    stop_server(proc)
 
-    with open(os.path.join(ROOT, "reports", "bench_summary.md"), "w", encoding="utf-8") as f:
+    out_name = "bench_summary_ext.md" if os.environ.get("BENCH_URL") else "bench_summary.md"
+    with open(os.path.join(ROOT, "reports", out_name), "w", encoding="utf-8") as f:
         f.write("# 候选词重排模型横评（CPU · -ngl 0 · 10线程 · enable_thinking=false）\n\n")
         f.write(f"- 用例：{len(CASES)} 条拼音歧义句（含无上下文/语境反转/成语接续/水利工程专业词）\n")
         f.write("- 模式：list=原版Top5列表输出(max_tokens=20)；single=只输出最优1词(max_tokens=6)\n")

@@ -368,6 +368,12 @@ function llm_reranker(input, env)
 
   update_context_from_history(env)
 
+  -- switcher 开关（方案选单 F4/Ctrl+` 里「AI重排」可随时切，默认开）：
+  -- enabled 配置管总闸，运行时开关管用户手感——两者都开才工作
+  local ai_on = true
+  pcall(function() ai_on = env.engine.context:get_option('ai_rerank') end)
+  local active = _cfg.enabled and ai_on
+
   local preedit = ''
   pcall(function()
     local p = env.engine.context:get_preedit()
@@ -376,7 +382,7 @@ function llm_reranker(input, env)
 
   local parsed_preedit = parse_preedit(preedit)
 
-  if not _cfg.enabled or #all < 2 then
+  if not active or #all < 2 then
     -- enabled:false 也要喂快照给数据飞轮：只记录展示顺序，零开销
     if _cfg.collect_train and parsed_preedit and #all >= 2 then
       local shown = {}

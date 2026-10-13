@@ -175,6 +175,7 @@ def main():
           f"steps/epoch {len(tl)}, total {steps}")
     model.train()
     gstep, t0 = 0, time.time()
+    best_val = -1.0   # 防退化：只升不降的最佳适配器单独存档（末轮过拟合时保住最优解）
     for ep in range(args.epochs):
         run, seen = 0.0, 0
         for ids, att, tgt, k in tl:
@@ -195,6 +196,11 @@ def main():
         vl_loss = val_loss(model, vl, dev)
         hits, n = val_exact(model, tok, val_ds.rows, dev)
         print(f"== epoch {ep}: val_loss {vl_loss:.4f}, val首词命中 {hits}/{n} ({hits/n:.0%})", flush=True)
+        if hits / max(n, 1) > best_val:
+            best_val = hits / max(n, 1)
+            os.makedirs(args.out_adapter + "-best", exist_ok=True)
+            model.save_pretrained(args.out_adapter + "-best")
+            print(f"   ★ 新最佳适配器已存 ({best_val:.1%}) → {args.out_adapter}-best", flush=True)
 
     if train_ds.skip:
         print(f"注意：{train_ds.skip} 条样本模板前缀不一致，退化为整句训练")
