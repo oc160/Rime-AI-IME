@@ -53,3 +53,11 @@
 - [iDvel/rime-ice](https://github.com/iDvel/rime-ice)（雾凇拼音）
 - [metasequoiaime/chinese-ime-lm](https://github.com/metasequoiaime/chinese-ime-lm)（打分器架构参考与权重，Apache-2.0）
 - [Exploring and Adapting Chinese GPT to Pinyin Input Method](https://arxiv.org/abs/2203.00249)（Phase C 底座候选）
+
+### 联想副本（predict-v2）
+- `training/train_predict_distill.py`：0.8B 联想专用 LoRA 微调
+  - 底座：Qwen3.5-0.8B 基座（非 ime-v1——零迁移已实证）
+  - 数据：领域+wiki 1:1 词边界样本 + 防复读过滤
+  - 关键修复：词尾追加 im_end 终止标记（v1 不刹车的根因）
+  - 结果：复读 0%（基线 55%），词级输出，领域方向正确
+- 评测：`eval/predict_eval.py` + 验收集 `eval_domain_v2_boundary.jsonl`（300 条）
