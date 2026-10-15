@@ -1,3 +1,23 @@
+## Unreleased
+
+- **击键延迟修复：lua filter 惰性枚举**——原版第一行把翻译器候选流全量抽干，
+  单字母 preedit 实测生成 1660+ 候选（造句组装+单字+符号），大写 A 每键 650ms、
+  小写 a 每键 ~150ms。改为 `local next_fn, st = input:iter()` 只取前
+  K = max(max_cands, max_rerank_pos) 个，其余 `for c in next_fn, st` 流式直通：
+  A → 2.5ms，候选/翻页行为零变化（tools/probe_win 回归验证）。
+  坑：librime-lua 的 iter() 返回 (函数,状态) 对，只接第一个值手动调用会报
+  `LuaTranslation::Next error: bad argument #2` 并吞掉全部候选
+- **领域词库入真词典（rime/custom_domain.dict.yaml）**：331 词 + 多音字双码，
+  经 import_tables 并入 rime_ice。custom_phrase 的编码列是原始字符串匹配
+  （只适合自造缩写码），写全拼带空格编码会"抢前缀、全拼永不命中"——
+  完整事故记录见 docs/domain-dict-and-latency.md
+- **补全候选关闭**（translator/enable_completion: false）：`~剩余拼音` 提示不进候选
+- **命令行全量部署 tools/probe_win/deploy_live.py**：ctypes 调 rime.dll
+  start_maintenance(full_check=1)。WeaselDeployer /deploy 是快速通道，
+  词表源码变更不触发重编译；且会话级引擎不随部署广播刷新，需打断当前输入
+  或重启 WeaselServer
+- F4 方案选单「AI重排」运行时开关（switches/@next ai_rerank，默认开）上线
+
 # Changelog
 
 ## v0.1.0（2026-10-13）

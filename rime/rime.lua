@@ -367,8 +367,8 @@ end
 
 -- ─── Rime filter 入口 ────────────────────────────────────
 function llm_reranker(input, env)
+  local next_fn, st = input:iter()   -- 惰性迭代器：(函数, 状态)；只取前 K 个，其余流式直通
   local all = {}
-  for cand in input:iter() do table.insert(all, cand) end
 
   _cfg = get_config(env)
   if not RPC_DIR then
@@ -379,6 +379,13 @@ function llm_reranker(input, env)
   if not _logged and _cfg.debug then
     dlog('v8-async started, rpc dir: '..RPC_DIR)
     _logged = true
+  end
+
+  local K = math.max(_cfg.max_cands, _cfg.max_rerank_pos or _cfg.max_cands)
+  for i = 1, K do
+    local c = next_fn(st)
+    if not c then break end
+    table.insert(all, c)
   end
 
   update_context_from_history(env)
@@ -412,6 +419,7 @@ function llm_reranker(input, env)
       }
     end
     for _,c in ipairs(all) do yield(c) end
+    for c in next_fn, st do yield(c) end
     return
   end
 
@@ -419,6 +427,7 @@ function llm_reranker(input, env)
     dlog('SKIP: unsupported preedit '..preedit)
     _last_snapshot = nil
     for _,c in ipairs(all) do yield(c) end
+    for c in next_fn, st do yield(c) end
     return
   end
 
@@ -462,11 +471,7 @@ function llm_reranker(input, env)
     end
   end
 
-  local top, rest = {}, {}
-  for i,c in ipairs(all) do
-    if i <= _cfg.max_cands then table.insert(top,c)
-    else                       table.insert(rest,c) end
-  end
+  local top = all   -- all 已截断为前 K 个；K >= max_cands 时 top 语义不变
 
   local ordered = reorder(top, idx)
 
@@ -482,7 +487,7 @@ function llm_reranker(input, env)
   end
 
   for _,c in ipairs(ordered) do yield(c) end
-  for _,c in ipairs(rest)    do yield(c) end
+  for c in next_fn, st do yield(c) end   -- 第 K 个之后的候选：零处理直通
 end
 
 -- ─── init / fini ─────────────────────────────────────────

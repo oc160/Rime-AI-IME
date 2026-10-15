@@ -1,0 +1,339 @@
+# Rime dict
+name: custom_domain
+version: "2026.10.15"
+sort: by_weight
+use_preset_vocabulary: false
+...
+
+# 水利领域词库：n-gram 挖掘 255 + 人工 76（由 custom_phrase 迁入真词库，全拼可命中）
+分水闸	fen shui zha	50000
+喀克	ka ke	50000
+水闸安全	shui zha an quan	50000
+闸室	zha shi	50000
+边墩	bian dun	50000
+分水枢纽	fen shui shu niu	50000
+闸墩	zha dun	50000
+退水闸	tui shui zha	50000
+喀克干渠	ka ke gan qu	50000
+满足设计	man zu she ji	50000
+渠首	qu shou	50000
+消力池	xiao li chi	50000
+过流能力	guo liu neng li	50000
+乌恰镇	wu qia zhen	50000
+行程限位	xing cheng xian wei	50000
+复核计算	fu he ji suan	50000
+一总干渠	yi zong gan qu	50000
+安全复核	an quan fu he	50000
+闸顶高程	zha ding gao cheng	50000
+苏盖提乡	su gai ti xiang	50000
+砌石	qi shi	50000
+桩号	zhuang hao	50000
+多年平均	duo nian ping jun	50000
+护底	hu di	50000
+单孔净宽	dan kong jing kuan	50000
+渗流安全	shen liu an quan	50000
+基底应力	ji di ying li	50000
+翼墙	yi qiang	50000
+闸底板	zha di ban	50000
+地震工况	di zhen gong kuang	50000
+引水渠首	yin shui qu shou	50000
+一干渠	yi gan qu	50000
+装置缺失	zhuang zhi que shi	50000
+本次鉴定	ben ci jian ding	50000
+均满足	jun man zu	50000
+闸前	zha qian	50000
+边梁	bian liang	50000
+洪水标准	hong shui biao zhun	50000
+消能防冲	xiao neng fang chong	50000
+海漫	hai man	50000
+闸室底板	zha shi di ban	50000
+水闸工程	shui zha gong cheng	50000
+扭面	niu mian	50000
+节制闸闸	jie zhi zha zha	50000
+测站	ce zhan	50000
+对闸门	dui zha men	50000
+配水	pei shui	50000
+策勒	ce lei	50000
+本水闸	ben shui zha	50000
+抗震安全	kang zhen an quan	50000
+测项目	ce xiang mu	50000
+衬砌	chen qi	50000
+道工程	dao gong cheng	50000
+启闭设备	qi bi she bei	50000
+闸出口	zha chu kou	50000
+关规定	guan gui ding	50000
+加大工况	jia da gong kuang	50000
+制安	zhi an	50000
+过闸流量	guo zha liu liang	50000
+见表	jian biao	50000
+地基应力	di ji ying li	50000
+检修工况	jian xiu gong kuang	50000
+闸室结构	zha shi jie gou	50000
+化管理	hua guan li	50000
+体结构	ti jie gou	50000
+梁腹板	liang fu ban	50000
+开展专项	kai zhan zhuan xiang	50000
+闸底高程	zha di gao cheng	50000
+挡水	dang shui	50000
+孔节制闸	kong jie zhi zha	50000
+渗透比降	shen tou bi jiang	50000
+沿基底面	yan ji di mian	50000
+口边墩	kou bian dun	50000
+组支渠	zu zhi qu	50000
+成后	cheng hou	50000
+面高程	mian gao cheng	50000
+门槽	men cao	50000
+对工程	dui gong cheng	50000
+水保	shui bao	50000
+理与	li yu	50000
+蚀严重	shi yan zhong	50000
+性和	xing he	50000
+和水	he shui	50000
+池长	chi zhang	50000
+计算成果	ji suan cheng guo	50000
+测区	ce qu	50000
+和安全	he an quan	50000
+梁翼板	liang yi ban	50000
+露筋	lu jin	50000
+均大于	jun da yu	50000
+护缺失	hu que shi	50000
+多浪水库	duo lang shui ku	50000
+闸门启闭	zha men qi bi	50000
+次梁	ci liang	50000
+标人	biao ren	50000
+该水闸	gai shui zha	50000
+埋件	mai jian	50000
+包人	bao ren	50000
+已运行	yi yun xing	50000
+标准化管	biao zhun hua guan	50000
+折算应力	zhe suan ying li	50000
+粉土	fen tu	50000
+根据现场	gen ju xian chang	50000
+沙量	sha liang	50000
+本次安全	ben ci an quan	50000
+节制闸与	jie zhi zha yu	50000
+由新疆	you xin jiang	50000
+灌溉供水	guan gai gong shui	50000
+纵坡	zong po	50000
+力计算	li ji suan	50000
+管理和	guan li he	50000
+体完	ti wan	50000
+进行系统	jin xing xi tong	50000
+部位进行	bu wei jin xing	50000
+岩性	yan xing	50000
+护等	hu deng	50000
+一个单孔	yi ge dan kong	50000
+化监测	hua jian ce	50000
+门力	men li	50000
+与水	yu shui	50000
+边墙	bian qiang	50000
+闸进	zha jin	50000
+部高程	bu gao cheng	50000
+护措施	hu cuo shi	50000
+行水	xing shui	50000
+复核成果	fu he cheng guo	50000
+用情况	yong qing kuang	50000
+减压池	jian ya chi	50000
+地面积	di mian ji	50000
+门控制	men kong zhi	50000
+下游翼墙	xia you yi qiang	50000
+水等	shui deng	50000
+粘土	nian tu	50000
+前水	qian shui	50000
+粒含量	li han liang	50000
+积物	ji wu	50000
+退水闸闸	tui shui zha zha	50000
+水灌溉	shui guan gai	50000
+门体	men ti	50000
+设计洪水	she ji hong shui	50000
+启闭操作	qi bi cao zuo	50000
+水率	shui lv	50000
+作物需水	zuo wu xu shui	50000
+渗流计算	shen liu ji suan	50000
+数据进行	shu ju jin xing	50000
+池深	chi shen	50000
+实现对	shi xian dui	50000
+其它	qi ta	50000
+运维经费	yun wei jing fei	50000
+下游护坡	xia you hu po	50000
+砂层	sha ceng	50000
+符合设计	fu he she ji	50000
+自压管道	zi ya guan dao	50000
+于一	yu yi	50000
+闸门锈蚀	zha men xiu shi	50000
+侧墙	ce qiang	50000
+水和	shui he	50000
+渗压	shen ya	50000
+吊耳	diao er	50000
+水期	shui qi	50000
+闸后	zha hou	50000
+卡滞	ka zhi	50000
+护坡采用	hu po cai yong	50000
+与上游	yu shang you	50000
+现状年	xian zhuang nian	50000
+结合本	jie he ben	50000
+放水涵洞	fang shui han dong	50000
+置等	zhi deng	50000
+现地控制	xian di kong zhi	50000
+渗流稳定	shen liu wen ding	50000
+老沙湾镇	lao sha wan zhen	50000
+能设	neng she	50000
+调蓄	tiao xu	50000
+能要求	neng yao qiu	50000
+检修闸	jian xiu zha	50000
+对施工	dui shi gong	50000
+建设征地	jian she zheng di	50000
+在水	zai shui	50000
+管理规	guan li gui	50000
+水任务	shui ren wu	50000
+观测设施	guan ce she shi	50000
+测和	ce he	50000
+和管理	he guan li	50000
+该闸	gai zha	50000
+组斗渠	zu dou qu	50000
+弃渣	qi zha	50000
+坝段	ba duan	50000
+情监测	qing jian ce	50000
+合水	he shui	50000
+行数据	xing shu ju	50000
+劣化明显	lie hua ming xian	50000
+闸孔数	zha kong shu	50000
+结构和	jie gou he	50000
+计算得	ji suan de	50000
+卡尔苏河	ka er su he	50000
+进行分	jin xing fen	50000
+化设	hua she	50000
+干渠整体	gan qu zheng ti	50000
+下游护底	xia you hu di	50000
+水能力	shui neng li	50000
+渠道工程	qu dao gong cheng	50000
+号文	hao wen	50000
+水库清淤	shui ku qing yu	50000
+启闭机房	qi bi ji fang	50000
+型灌区	xing guan qu	50000
+级标准	ji biao zhun	50000
+件等	jian deng	50000
+分干	fen gan	50000
+下部螺杆	xia bu luo gan	50000
+水时	shui shi	50000
+止水失效	zhi shui shi xiao	50000
+运距	yun ju	50000
+道工程区	dao gong cheng qu	50000
+蚀坑	shi keng	50000
+等缺陷	deng que xian	50000
+水闸出口	shui zha chu kou	50000
+胜利灌区	sheng li guan qu	50000
+出露	chu lu	50000
+防冲设施	fang chong she shi	50000
+期对	qi dui	50000
+地下轮廓	di xia lun kuo	50000
+和运行	he yun xing	50000
+水闸名称	shui zha ming cheng	50000
+与现	yu xian	50000
+边梁翼板	bian liang yi ban	50000
+启闭机室	qi bi ji shi	50000
+新统	xin tong	50000
+级水	ji shui	50000
+对钢	dui gang	50000
+通过对	tong guo dui	50000
+测成果	ce cheng guo	50000
+对混凝土	dui hun ning tu	50000
+村支渠	cun zhi qu	50000
+地基反力	di ji fan li	50000
+阀井	fa jing	50000
+翼缘	yi yuan	50000
+化控制	hua kong zhi	50000
+沟河	gou he	50000
+闸基	zha ji	50000
+等结构	deng jie gou	50000
+施工工	shi gong gong	50000
+程不	cheng bu	50000
+时采集	shi cai ji	50000
+高水	gao shui	50000
+轮灌	lun guan	50000
+计算工况	ji suan gong kuang	50000
+养护经费	yang hu jing fei	50000
+门和	men he	50000
+灌溉期	guan gai qi	50000
+护和	hu he	50000
+和施工	he shi gong	50000
+安全和	an quan he	50000
+校审	jiao shen	50000
+校核	jiao he	50000
+校验	jiao yan	50000
+校准	jiao zhun	50000
+安全鉴定	an quan jian ding	50000
+竣工验收	jun gong yan shou	50000
+质量检测	zhi liang jian ce	50000
+定期检查	ding qi jian cha	50000
+专项检测	zhuan xiang jian ce	50000
+外观质量	wai guan zhi liang	50000
+高程	gao cheng	50000
+泄流	xie liu	50000
+测流	ce liu	50000
+断面测量	duan mian ce liang	50000
+拦污栅	lan wu zha	50000
+工作闸门	gong zuo zha men	50000
+检修闸门	jian xiu zha men	50000
+弧形闸门	hu xing zha men	50000
+平面闸门	ping mian zha men	50000
+铺盖	pu gai	50000
+护坦	hu tan	50000
+防冲槽	fang chong cao	50000
+沉砂池	chen sha chi	50000
+引水渠	yin shui qu	50000
+退水渠	tui shui qu	50000
+总干渠	zong gan qu	50000
+东干渠	dong gan qu	50000
+西干渠	xi gan qu	50000
+南干渠	nan gan qu	50000
+北干渠	bei gan qu	50000
+设计洪水位	she ji hong shui wei	50000
+校核洪水位	jiao he hong shui wei	50000
+正常蓄水位	zheng chang xu shui wei	50000
+死水位	si shui wei	50000
+兴利库容	xing li ku rong	50000
+调洪库容	tiao hong ku rong	50000
+泄量	xie liang	50000
+含沙量	han sha liang	50000
+输沙率	shu sha lv	50000
+糙率	cao lv	50000
+水力半径	shui li ban jing	50000
+曼宁公式	man ning gong shi	50000
+谢才公式	xie cai gong shi	50000
+稳定计算	wen ding ji suan	50000
+结构复核	jie gou fu he	50000
+配筋计算	pei jin ji suan	50000
+抗滑稳定	kang hua wen ding	50000
+抗浮稳定	kang fu wen ding	50000
+渗透坡降	shen tou po jiang	50000
+允许承载力	yun xu cheng zai li	50000
+标准贯入	biao zhun guan ru	50000
+地基处理	di ji chu li	50000
+换填垫层	huan tian dian ceng	50000
+防渗墙	fang shen qiang	50000
+灌注桩	guan zhu zhuang	50000
+钢筋制安	gang jin zhi an	50000
+混凝土强度	hun ning tu qiang du	50000
+抗冻等级	kang dong deng ji	50000
+抗渗等级	kang shen deng ji	50000
+保护层厚度	bao hu ceng hou du	50000
+碳化深度	tan hua shen du	50000
+测缝计	ce feng ji	50000
+渗压计	shen ya ji	50000
+水位计	shui wei ji	50000
+量水堰	liang shui yan	50000
+流速仪	liu su yi	50000
+水文站	shui wen zhan	50000
+雨量站	yu liang zhan	50000
+蒸发量	zheng fa liang	50000
+径流量	jing liu liang	50000
+洪水频率	hong shui pin lv	50000
+设计年限	she ji nian xian	50000
+运行管理	yun xing guan li	50000
+养护维修	yang hu wei xiu	50000
+除险加固	chu xian jia gu	50000
+安全监测	an quan jian ce	50000
+巡视检查	xun shi jian cha	50000
+岁修	sui xiu	50000
+大修	da xiu	50000
