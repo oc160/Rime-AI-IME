@@ -1,0 +1,28 @@
+# clover_jiugong.custom.yaml — 九宫格拼音 + AI 候选重排（Trime·进程内推理）
+# 词典指向手机上已编译的 luna_pinyin（不拉 clover 15MB 词库链，用户词库与26键共享）
+patch:
+  translator/dictionary: luna_pinyin
+  switches/@next 0:
+    name: ai_rerank
+    reset: 1
+    states: [ AI关, AI开 ]
+  simplifier/option_name: zh_simp
+  # 原 schema 绑 s2t(简→繁，为简体 clover 词典设计)；换 luna 繁体词典后必须显式反向为
+  # t2s(繁→简)——只改 option_name 不够，schema 自带的 s2t.json 会残留（实测踩坑）
+  simplifier/opencc_config: t2s.json
+  'switches/@3':            # 0=ai_rerank(自定义插入) 1=ascii 2=full_shape 3=zh_simp_s2t→改绑
+    name: zh_simp
+    reset: 1
+    states: [ 漢字, 汉字 ]
+  engine/processors/@before 7: lua_processor@llm_retract_tracker
+  engine/filters/@next 0: lua_filter@llm_reranker
+  llm_reranker/enabled: true
+  llm_reranker/max_candidates: 5
+  llm_reranker/min_syllables: 2
+  llm_reranker/max_preedit_len: 10
+  llm_reranker/max_rerank_pos: 5
+  llm_reranker/context_length: 60
+  llm_reranker/min_margin: "0.03"
+  llm_reranker/model: ime-model.safetensors
+  llm_reranker/debug_log: true
+  llm_reranker/collect_training_data: true

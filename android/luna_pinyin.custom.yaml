@@ -1,0 +1,39 @@
+# luna_pinyin.custom.yaml — AI 候选重排（Android/Trime · 进程内 C 推理）
+patch:
+  switches:
+    - name: ascii_mode
+      reset: 0
+      states: [ 中文, 西文 ]
+    - name: full_shape
+      states: [ 半角, 全角 ]
+    - name: simplification
+      states: [ 漢字, 汉字 ]
+    - name: ascii_punct
+      states: [ 。，, ．， ]
+    - name: ai_rerank
+      reset: 1
+      states: [ AI关, AI开 ]
+  engine/processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - lua_processor@llm_retract_tracker
+    - express_editor
+  engine/filters:
+    - simplifier
+    - uniquifier
+    - lua_filter@llm_reranker
+  llm_reranker/enabled: true
+  llm_reranker/max_candidates: 5
+  llm_reranker/min_syllables: 2
+  llm_reranker/max_preedit_len: 10
+  llm_reranker/max_rerank_pos: 5
+  llm_reranker/context_length: 60
+  llm_reranker/min_margin: "0.03"
+  llm_reranker/model: ime-model.safetensors
+  llm_reranker/debug_log: true
+  llm_reranker/collect_training_data: true
