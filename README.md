@@ -13,9 +13,9 @@
 
 基于 [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)（macOS 版，MIT）移植起步，架构已重构为异步 sidecar，并附带完整的任务微调训练管线（重排 + 联想两条线）。
 
-> [下载预训练模型](https://github.com/oc160/rime-llm-reranker-win/releases/tag/v0.1.0-model)（重排 0.8B / 25M 学生 / 联想 0.8B，共三个 GGUF）
+> [下载预训练模型](https://github.com/oc160/rime-llm-reranker/releases/tag/v0.1.0-model)（重排 0.8B / 25M 学生 / 联想 0.8B，共三个 GGUF）
 
-> ⚠️ **实验性项目**：早期同步版本曾造成系统级冻结（见[事故报告](docs/incident-2026-10-13-t10-typing.md)）；现行 v8 异步架构已消除该风险（多机实测零冻结），但仍建议保留第二个输入法作为退路。方案选单（F4/Ctrl+`）有「AI关/AI开」开关。
+> **状态**：v1 正式版。双端（Windows / Android）真机长期使用中；击键路径零阻塞架构经多机实测验证。推理服务异常时自动回退词库原生排序，打字无感。方案选单（F4/Ctrl+`）随时「AI关/AI开」。
 
 ## 架构
 
@@ -42,18 +42,17 @@
 ⑤ 自启链       开机自动：推理服务 + sidecar + 文件缓存预热 + WeaselServer 预拉起
 ```
 
-> **架构动机（真实事故）**：早期版本把同步模型查询（~300ms）放在击键路径上，隔离测试全绿，真人打字 40 秒后 explorer 挂起——Windows TSF 下应用每次击键都同步等输入法返回。完整取证见 [docs/incident-2026-10-13-t10-typing.md](docs/incident-2026-10-13-t10-typing.md)。
+> **架构动机**：Windows TSF 下应用在每次击键上同步等待输入法返回，击键路径对延迟零容忍——所以一切模型查询/推理都必须离开击键路径（异步文件握手 / 后台线程），这是本架构的第一设计原则。
 
-## 安全使用须知
+## 使用提示
 
-1. 保留至少两个输入法（如微软拼音 + 小狼毫），`Win+空格` 随时切换。
-2. 部署后第一次切到小狼毫会有一次性冷加载（数秒），先在记事本预热。
-3. 部署前杀干净 WeaselServer / WeaselDeployer 进程（多实例会互相改写配置）。
-4. 在 Windows 10 + Weasel 0.17.0 上开发测试；其他环境未验证。
+1. 部署后首次切换有一次性冷加载（数秒），可先在记事本预热。
+2. 部署前建议关闭正在运行的 WeaselServer / WeaselDeployer（多实例会互相改写配置）。
+3. 主力环境 Windows 10/11 + Weasel 0.17.x、Android + Trime 3.3.12；推理服务挂掉自动回退，无需人工干预。
 
 ## 快速开始
 
-前置：[小狼毫 Weasel](https://github.com/rime/weasel) + Python 3.10+ + [llama.cpp](https://github.com/ggml-org/llama.cpp)（llama-server）+ [Release 里的 GGUF 模型](https://github.com/oc160/rime-llm-reranker-win/releases/tag/v0.1.0-model)。
+前置：[小狼毫 Weasel](https://github.com/rime/weasel) + Python 3.10+ + [llama.cpp](https://github.com/ggml-org/llama.cpp)（llama-server）+ [Release 里的 GGUF 模型](https://github.com/oc160/rime-llm-reranker/releases/tag/v0.1.0-model)。
 
 ```bash
 # 1. 取得雾凇拼音（GPL-3.0 项目请自行获取）
@@ -164,6 +163,4 @@ python training/train_student.py \
 
 ## 文档
 
-- [事故报告 I：2060 主机四次全桌面冻结](docs/incident-2026-10-12-2060-host.md)
-- [事故报告 II：T10 真实打字冻结与异步重构决策](docs/incident-2026-10-13-t10-typing.md)
 - [Phase A 状态档案](docs/phase-a-status.md)

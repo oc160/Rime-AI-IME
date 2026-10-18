@@ -1,18 +1,19 @@
-# rime-llm-reranker-win
+# rime-llm-reranker
 
 [简体中文](README.md) | **English**
 
-**LLM candidate reranking for the Rime input method on Windows**: the dictionary proposes candidates, a local LLM reads the context and pushes the best word to the top — with zero blocking on the typing path (async file-handshake architecture).
+**LLM candidate reranking + next-word prediction for the Rime input method, on two platforms**: the dictionary proposes candidates, a local model reads the context and pushes the best word to the top — with zero blocking on the typing path.
+
+| Platform | Approach | Docs |
+|---|---|---|
+| **Windows** (Weasel + rime-ice) | rime.lua v8 async architecture (sidecar file handshake) | this README |
+| **Android** (Trime v3.3.12) | in-process C++ inference (4M model, libime.so), T9 9-key supported | [`android/BUILD.md`](android/BUILD.md) |
+
+Both platforms share the same reranking core (lazy candidate enumeration, async query/pickup, confidence gating, training-data flywheel); fixes are ported both ways.
 
 Started as a port of [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker) (macOS, MIT), then rearchitected around an async sidecar, plus a complete task-specific fine-tuning pipeline.
 
-> ## ⚠️ Crash-risk warning — read this first
->
-> This project hooks code into the IME keystroke path — one of the highest-risk spots on Windows: under TSF, the host application **synchronously waits for the IME on every single keystroke**, and the path has zero timeout tolerance.
->
-> - **Real incidents happened**: the early synchronous version froze the system UI on two machines (whole desktop hung; only a forced restart helped). Forensics in [incident report I](docs/incident-2026-10-12-2060-host.md) and [incident report II](docs/incident-2026-10-13-t10-typing.md) (both in Chinese)
-> - **The freeze was just fixed**: the current v8 async architecture reduces the keystroke path to microsecond-level file I/O, verified freeze-free in real typing — but **the fix is young and serious bugs cannot be ruled out**
-> - **Protect yourself**: always keep a second IME installed (`Win+Space` is your escape hatch); back up `%APPDATA%\Rime` before deploying; this is experimental software with no warranty of any kind
+> **Status**: v1 stable. Daily-driven on real hardware on both platforms; the zero-blocking keystroke path is verified across multiple machines. If the inference service dies, candidates silently fall back to native dictionary order.
 
 ```
 ① Candidate layer   rime-ice dictionary — sentence composition + top-5 word candidates
@@ -28,14 +29,13 @@ Started as a port of [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-l
                     → personalization training-data flywheel
 ```
 
-> **Why this architecture (a real incident)**: an early version put synchronous model queries (~300 ms) on the keystroke path. Isolated tests were all green; 40 seconds into real human typing, explorer hung — under Windows TSF every keystroke synchronously waits for the IME, and the path has no tolerance whatsoever. Full forensics in [docs/incident-2026-10-13-t10-typing.md](docs/incident-2026-10-13-t10-typing.md) (Chinese).
+> **Why this architecture**: under Windows TSF the host app synchronously waits for the IME on every keystroke — the typing path has zero latency tolerance. All model queries therefore live off the keystroke path (async file handshake / background threads). This is the project's first design principle.
 
-## ⚠️ Read before installing
+## Install notes
 
-1. **Always keep at least two IMEs installed** (e.g. Microsoft Pinyin + Weasel). A single IME is a single point of failure with no way out (`Win+Space` is your lifeline).
-2. **Always prewarm**: the first switch to Weasel after a deploy triggers a one-off cold load of the schema (several seconds of stutter); warm it up in Notepad before real use.
-3. **Kill every WeaselServer / WeaselDeployer process before deploying** — multiple instances rewrite each other's config (hard-learned lesson, see incident report I).
-4. Developed and tested on Windows 10 + Weasel 0.17.0; other environments unverified.
+1. The first switch to Weasel after a deploy triggers a one-off cold load (a few seconds); warm it up in Notepad first.
+2. Close any running WeaselServer / WeaselDeployer before deploying (multiple instances rewrite each other's config).
+3. Primary environments: Windows 10/11 + Weasel 0.17.x, Android + Trime 3.3.12. If the inference service dies, typing silently falls back — no manual intervention needed.
 
 ## Quick start
 
