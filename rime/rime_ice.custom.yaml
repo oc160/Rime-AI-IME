@@ -7,14 +7,17 @@
 patch:
   "translator/enable_completion": false   # 补全候选(~剩余拼音提示)不进候选，全拼打完才出词
   "engine/processors/@before 0": lua_processor@llm_retract_tracker
-
-  # 方案选单（F4 / Ctrl+`）里的「AI重排」开关，reset:1 = 默认开
-  "switches/@next":
-    name: ai_rerank
-    states: [ "AI关", "AI开" ]
-    reset: 1
   # ── LLM 重排层（v8 异步文件握手）──
   "engine/filters/@next": lua_filter@llm_reranker
+
+  # ── 上屏后联想（v1 查表）──
+  "engine/processors/@before 1": lua_processor@predictor_processor
+  "speller/alphabet": zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA`'   # 追加撇号：上屏后联想触发码
+  "engine/translators/@before 0": lua_translator@predictor_translator
+  "switches/@next 0":
+    name: ai_predict
+    states: [ "联关", "联开" ]
+    reset: 1
   "llm_reranker":
     enabled: true
     # RPC 目录（lua 与 sidecar.py --dir 必须一致）；缺省 = 用户目录/llm_rpc（纯 ASCII 时）

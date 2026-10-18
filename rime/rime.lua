@@ -92,6 +92,7 @@ local function get_config(env)
 end
 
 local _cfg = {}
+local _cfg_cached = false   -- 配置只在首次取一次：每键 12 次 YAML 查找纯属浪费
 
 -- ─── 调试日志 ────────────────────────────────────────────
 local LOG_PATH = USER_DIR..'/rime_llm.log'
@@ -366,11 +367,34 @@ local function reorder(list, idx)
 end
 
 -- ─── Rime filter 入口 ────────────────────────────────────
+-- ─── 按键耗时测量（临时诊断）：USER_DIR/pred_measure.flag 存在时打 M0/M1/M2 点 ──
+local _measure_flag = false
+local _measure_at = 0
+local function measuring()
+  local now = os.clock()
+  if _measure_at == 0 or (now - _measure_at) > 2.0 then
+    _measure_at = now
+    local f = io.open(USER_DIR .. '/pred_measure.flag', 'r')
+    _measure_flag = f ~= nil
+    if f then f:close() end
+  end
+  return _measure_flag
+end
+
+-- ─── 联想 v2 预取前置声明（实现在下方 PRED 区，filter 先引用） ──
+local predict_send, predict_hist_tail, PRED_LAST_SEND, predict_load, predict_has
+local PRED_KEY_AT, PRED_KEY_PREV
+
 function llm_reranker(input, env)
   local next_fn, st = input:iter()   -- 惰性迭代器：(函数, 状态)；只取前 K 个，其余流式直通
   local all = {}
 
-  _cfg = get_config(env)
+  if measuring() then log.info('M1') end
+
+  if not _cfg_cached then
+    _cfg = get_config(env)
+    _cfg_cached = true
+  end
   if not RPC_DIR then
     RPC_DIR = _cfg.rpc_dir ~= '' and _cfg.rpc_dir
       or (USER_DIR:match('^[%w\\/:_%-%. ]+$') and USER_DIR..'/llm_rpc' or 'C:/Windows/Temp/llm_rpc')
@@ -403,6 +427,38 @@ function llm_reranker(input, env)
   end)
 
   local parsed_preedit = parse_preedit(preedit)
+
+  -- ── AI联想 v2：打字途中预取——吃满拼音的 CJK 首候选先异步问下一词，
+  --    用户读完候选按空格上屏时结果多半已就绪（实现见下方 PRED 区）。
+  --    节流：≥6 键且距上次发送 ≥1s——半截拼音(数据亲/数据区)不触发，
+  --    否则打字全程都在跑推理，CPU 抢核导致上屏变慢 ──
+  pcall(function()
+    local on = true
+    on = env.engine.context:get_option('ai_predict')
+    if on and #all > 0 then
+      predict_load()   -- 幂等：会话首个词也带着完整词表验真词，不错过预取
+      local c0 = all[1]
+      local t = c0.text or ''
+      local b1 = t:byte(1) or 0
+      if #t >= 6 and b1 >= 0xE4 and b1 <= 0xE9 then
+        local inp = env.engine.context.input or ''
+        local pe = c0.preedit or ''
+        local chars = math.floor(#t / 3)
+        -- 整句模式下 pe==inp 恒真、字数==音节数也常碰巧成立，都会瞄准半截拼词；
+        -- 真词校验（predict_has，词表字节扫描）只在停顿分支做——绝不进热路径
+        local match = (pe ~= '' and pe == inp) or (chars == count_syllables(inp))
+        local now = os.clock()
+        -- 只在真停顿时预取（本次按键距前一键 ≥0.45s = 用户在读候选/想词）：
+        -- 流式快打期间零查询零推理，CPU 完全让路；停顿处发一条，上屏时结果多半就绪
+        local paused = PRED_KEY_PREV > 0 and (PRED_KEY_AT - PRED_KEY_PREV) >= 0.45
+        if match and #inp >= 6 and paused and (now - (PRED_LAST_SEND or 0)) >= 0.8
+           and predict_has(t) then
+          PRED_LAST_SEND = now
+          predict_send({ [t] = predict_hist_tail() .. t })
+        end
+      end
+    end
+  end)
 
   if not active or #all < 2 then
     -- enabled:false 也要喂快照给数据飞轮：只记录展示顺序，零开销
@@ -450,8 +506,10 @@ function llm_reranker(input, env)
     dlog('SKIP: incomplete pinyin tail '..query_preedit)
   end
 
-  -- ① 先取回 sidecar 结果（微秒级，非阻塞）
-  rpc_pickup()
+  -- ① 取回 sidecar 结果（仅在有在途请求时读文件；微秒级，非阻塞）
+  if next(_pending) ~= nil then
+    rpc_pickup()
+  end
 
   local idx = nil
   if not skip then
@@ -462,12 +520,17 @@ function llm_reranker(input, env)
       idx = cached.idx
       dlog('cache ['..tostring(idx)..'] '..cache_key)
     else
-      -- ② 未命中：投递请求后立即直通。结果在之后的击键里生效
-      local texts = {}
-      for _,c in ipairs(all) do
-        if #texts < _cfg.max_cands then table.insert(texts, c.text) end
+      -- ② 未命中：只在停顿（≥0.45s，用户正盯着候选读）时投递请求后立即直通。
+      --    每键都写请求文件毫无意义——拼音每加一字母 cache_key 即变，中间态查询
+      --    99% 没用且白付 4 次文件系统调用；停顿处发的这条才是用户会看的结果。
+      local paused_now = PRED_KEY_PREV > 0 and (PRED_KEY_AT - PRED_KEY_PREV) >= 0.45
+      if paused_now then
+        local texts = {}
+        for _,c in ipairs(all) do
+          if #texts < _cfg.max_cands then table.insert(texts, c.text) end
+        end
+        rpc_request(cache_key, history_key, query_preedit, texts)
       end
-      rpc_request(cache_key, history_key, query_preedit, texts)
     end
   end
 
@@ -543,3 +606,288 @@ function llm_retract_tracker(key_event, env)
   end
   return 2  -- kNoop
 end
+
+-- ─── 上屏后联想（v1 查表底座 + v2 模型置顶）─────────────────────
+-- 交互：上屏后自动挂触发码 "'"，候选窗出下一词，数字键选、选完链式预测；
+--      打任意字母先静默清掉触发码再正常输入；Esc/退格清除。
+--      F4 方案选单「AI联想」开关（ai_predict，默认开）。
+-- 性能铁律：词对表绝不能解析成 lua 表对象——librime-lua 每键全堆遍历，
+-- 11.3 万行小表 = 每键 +120ms（实测）；必须以单字符串常驻（单对象，GC 不遍历内容），
+-- 查询走字节 find + 64 键 LRU 小缓存（只在停顿/挂码时查，不进热路径）。
+-- 注：lua_translator 的 init/fini 需用表形式（librime-lua wiki 文档化机制）
+local PRED_RAW = nil        -- 词对表原文（单字符串，前置 '\n' 便于统一 find）
+local PRED_CACHE = {}       -- word -> { {word=, weight=} } | false(负缓存)
+local PRED_CACHE_KEYS = {}  -- LRU 插入序
+local PRED_LOADED = false
+local PRED_LAST = nil
+local PRED_SELF = false
+
+predict_load = function()
+  if PRED_LOADED then return end
+  PRED_LOADED = true
+  local f = io.open(USER_DIR..'/predict_pairs.txt', 'r')
+  if not f then log.info('PREDICT: predict_pairs.txt not found') return end
+  PRED_RAW = '\n' .. f:read('*all')
+  f:close()
+  log.info('PREDICT: pairs raw loaded '..#PRED_RAW..' bytes')
+end
+
+local function pred_cache_put(w, v)
+  PRED_CACHE[w] = v
+  table.insert(PRED_CACHE_KEYS, w)
+  if #PRED_CACHE_KEYS > 64 then
+    PRED_CACHE[table.remove(PRED_CACHE_KEYS, 1)] = nil
+  end
+end
+
+-- 单键解析：从 pos 起（该行以 \n 开头、键已匹配）收集同键连续行（每键至多 top8）
+local function pred_parse_from(w, pos)
+  local cands = {}
+  local p = pos + 1
+  for _ = 1, 8 do
+    local le = PRED_RAW:find('\n', p, true)
+    le = le or (#PRED_RAW + 1)
+    local line = PRED_RAW:sub(p, le - 1)
+    local k2, wd, cnt = line:match('^([^\t]+)\t([^\t]+)\t(%d+)$')
+    if not k2 or k2 ~= w then break end
+    table.insert(cands, { word = wd, weight = tonumber(cnt) or 0 })
+    if le > #PRED_RAW then break end
+    p = le + 1
+  end
+  return cands
+end
+
+local function predict_lookup(text)
+  if not text or text == '' or not PRED_RAW then return nil end
+  local hit = PRED_CACHE[text]
+  if hit ~= nil then return hit or nil end
+  -- 级联：整词 → 尾 6/5/4/3/2 字（字节安全：3 字节/汉字）
+  local found = nil
+  local tries = { text }
+  for l = math.min(6, math.floor(#text / 3)), 2, -1 do
+    table.insert(tries, text:sub(-l * 3))
+  end
+  for _, w in ipairs(tries) do
+    local pos = PRED_RAW:find('\n' .. w .. '\t', 1, true)
+    if pos then
+      local cands = pred_parse_from(w, pos)
+      if #cands > 0 then found = cands break end
+    end
+  end
+  pred_cache_put(text, found or false)
+  return found
+end
+
+predict_has = function(w)
+  return predict_lookup(w) ~= nil
+end
+
+-- ── v2：模型结果缓存 + 异步请求（与 scripts/pred_sidecar.py 文件握手）──
+-- pred_req.txt：lua 覆盖写，每行 "词<Tab>上下文"；pred_resp.txt：副驾追加
+-- "词<Tab>模型下一词<Tab>秒"，挂码时整读建映射。查不到/断服一律查表兜底。
+local PRED_MODEL = {}   -- word -> 模型下一词
+local PRED_SENT  = {}   -- word -> true（本会话已请求过）
+local PRED_SHOW  = nil  -- 当前挂码展示序列 { {word=, src='model'|'table'} }
+PRED_LAST_SEND = 0      -- 打字途中预取节流（os.clock 秒，前置声明于 filter 前）
+
+predict_hist_tail = function()
+  return utf8_tail(committed_buffer, 90)
+end
+
+local function predict_model_read()
+  local f = io.open(USER_DIR .. '/pred_resp.txt', 'rb')
+  if not f then return end
+  local body = f:read(128 * 1024)
+  f:close()
+  if not body or body == '' then return end
+  PRED_MODEL = {}
+  for line in body:gmatch('[^\r\n]+') do
+    local w, p = line:match('^([^\t]+)\t([^\t]+)')
+    if w and p then PRED_MODEL[w] = p end
+  end
+end
+
+predict_send = function(map)
+  local lines = {}
+  for w, c in pairs(map) do
+    if w and c and not PRED_SENT[w] and PRED_MODEL[w] == nil then
+      PRED_SENT[w] = true
+      table.insert(lines, w .. '\t' .. c)
+    end
+    if #lines >= 4 then break end
+  end
+  if #lines == 0 then return end
+  atomic_write(USER_DIR .. '/pred_req.txt', table.concat(lines, '\n') .. '\n')
+end
+
+local PRED_AT = 0
+local PRED_SEEN = nil          -- 上次 hook 已处理过的上屏文本：同一个词再来 update 必是清除事件，绝不重挂
+local PRED_TTL = 6.0           -- 挂码有效期（秒）：超时后任何键先清再透传（防点击别处后的隐形残留吃数字/空格）
+PRED_KEY_AT, PRED_KEY_PREV = 0, 0  -- 按键节奏（processor 全键记录；前置声明于 filter 之前）
+local PRED_GAPS = {}           -- 最近 10 次有效按键间隔（秒），节奏门自适应用
+local PRED_CHAIN = false       -- 本次上屏来自数字选中（链式联想中），hook 消费后复位
+local function predict_flow_threshold()
+  -- 自适应节奏门槛：近 10 键间隔中位数 ×2.5，夹在 [0.35, 0.9]——
+  -- 用户打得多快门槛贴多紧；慢打者的"阅读停顿"远长于自身节奏，仍能挂码
+  local n = #PRED_GAPS
+  if n == 0 then return 0.35 end
+  local s = {}
+  for _, g in ipairs(PRED_GAPS) do table.insert(s, g) end
+  table.sort(s)
+  local med = s[math.ceil(n / 2)]
+  return math.max(0.35, math.min(2.5 * med, 0.90))
+end
+local function predict_hook(ctx)
+  if measuring() then log.info('M2') end
+  if PRED_SELF then return end
+  -- 只在引擎真正空闲时挂码（update_notifier 在 commit 清理之后才轮到我们，
+  -- 否则 commit_notifier 里推入的码会被引擎的清空动作抹掉）
+  local composing = false
+  pcall(function() composing = ctx:is_composing() end)
+  if composing or (ctx.input and ctx.input ~= '') then return end
+  local on = true
+  pcall(function() on = ctx:get_option('ai_predict') end)
+  if not on then return end
+  local latest = nil
+  pcall(function()
+    local hist = ctx.commit_history
+    if hist and not hist:empty() then latest = hist:back().text end
+  end)
+  if not latest or latest == '' then return end
+  -- 关键守卫：只有出现【新】上屏才挂码。weasel 失焦/点击别处会 ClearComposition，
+  -- 该清除也触发 update_notifier，此时上屏历史没变——若重挂，' 会立即复活（分字符去不掉）。
+  if latest == PRED_SEEN then return end
+  PRED_SEEN = latest
+  -- 只有以 CJK 汉字开头的上屏才挂码：排除 ASCII 标点/数字、全角符号（首字节 0xEF，如（）、emoji
+  local b1 = latest:byte(1) or 0
+  if b1 < 0xE4 or b1 > 0xE9 then PRED_LAST = nil PRED_CHAIN = false return end
+  -- 节奏门（自适应）：本次上屏间隔小于 近10键中位间隔×2.5（夹在[0.35,0.9]s）属流式输入，
+  -- 用户不看联想——不挂码不查询不建组段。数字链式选中（PRED_CHAIN）豁免。
+  local flowed = (not PRED_CHAIN) and PRED_KEY_PREV > 0
+                 and (PRED_KEY_AT - PRED_KEY_PREV) < predict_flow_threshold()
+  if flowed then PRED_LAST = latest PRED_CHAIN = false return end
+  PRED_LAST = latest
+  local was_chain = PRED_CHAIN   -- 本次上屏是否来自数字选中（决定链式预取深度）
+  PRED_CHAIN = false
+  predict_load()
+  predict_model_read()
+  -- 展示序列：模型下一词（有则置顶）+ 查表词补尾，去重、跳过原词，最多8个
+  local cands = predict_lookup(latest)
+  PRED_SHOW = {}
+  local seen = {}
+  local mp = PRED_MODEL[latest]
+  if mp and mp ~= latest and #mp >= 3 and #mp <= 24 and (mp:byte(1) or 0) >= 0xE4 then
+    table.insert(PRED_SHOW, { word = mp, src = 'model' })
+    seen[mp] = true
+  end
+  if cands then
+    for _, c in ipairs(cands) do
+      if #PRED_SHOW >= 8 then break end
+      if c.word ~= latest and not seen[c.word] then
+        table.insert(PRED_SHOW, { word = c.word, src = 'table' })
+        seen[c.word] = true
+      end
+    end
+  end
+  if #PRED_SHOW == 0 then return end   -- 模型与查表都空：不挂码
+  -- 上下文尾巴：上屏历史缓冲 + 刚上屏的词（防 filter 尚未把它计入缓冲）
+  local ctx_base = committed_buffer
+  if ctx_base:sub(-#latest) ~= latest then ctx_base = ctx_base .. latest end
+  local tail = utf8_tail(ctx_base, 90)
+  -- 链式预取：平时只预取第1名（省推理不抢核）；数字链式联想进行中才预取前3名
+  local q = {}
+  local topn = was_chain and 3 or 1
+  for i = 1, math.min(topn, #PRED_SHOW) do
+    q[PRED_SHOW[i].word] = tail .. PRED_SHOW[i].word
+  end
+  predict_send(q)
+  PRED_AT = os.clock()
+  PRED_SELF = true
+  local ok = pcall(function() ctx:push_input("'") end)
+  PRED_SELF = false
+  log.info('PREDICT: arm after "'..latest..'" n='..#PRED_SHOW..
+    (mp and (' model='..mp) or '')..' push='..tostring(ok))
+end
+
+predictor_translator = {
+  init = function(env)
+    predict_load()
+    env.pred_conn = env.engine.context.update_notifier:connect(predict_hook)
+    log.info('PREDICT: translator init, notifier connected')
+  end,
+  func = function(input, seg, env)
+    if input ~= "'" then return end
+    local on = true
+    pcall(function() on = env.engine.context:get_option('ai_predict') end)
+    if not on or not PRED_LAST then return end
+    if PRED_SHOW then
+      for _, item in ipairs(PRED_SHOW) do
+        if item.word ~= PRED_LAST then
+          yield(Candidate('prediction', seg.start, seg._end, item.word,
+                          item.src == 'model' and '智' or '联'))
+        end
+      end
+      return
+    end
+    local cands = predict_lookup(PRED_LAST)
+    if not cands then return end
+    for _, c in ipairs(cands) do
+      if c.word ~= PRED_LAST then
+        yield(Candidate('prediction', seg.start, seg._end, c.word, '联'))
+      end
+    end
+  end,
+  fini = function(env)
+    if env.pred_conn then env.pred_conn:disconnect() end
+  end,
+}
+
+predictor_processor = {
+  func = function(key_event, env)
+    local ctx = env.engine.context
+    local kc = key_event.keycode
+    -- 全键记录节奏（不含释放键）：hook 用"上屏键与前一键的间隔"自适应判定流式输入
+    local rel = false
+    pcall(function() rel = key_event:release() end)
+    if not rel then
+      if measuring() then log.info(string.format('M0 0x%X', key_event.keycode)) end
+      PRED_KEY_PREV = PRED_KEY_AT
+      PRED_KEY_AT = os.clock()
+      if PRED_KEY_PREV > 0 then
+        local g = PRED_KEY_AT - PRED_KEY_PREV
+        if g <= 3.0 then   -- 超长间隔是走神/离开，不算打字节奏
+          table.insert(PRED_GAPS, g)
+          if #PRED_GAPS > 10 then table.remove(PRED_GAPS, 1) end
+        end
+      end
+    end
+    local composing = false
+    pcall(function() composing = ctx:is_composing() end)
+    if composing and ctx.input == "'" then
+      local shift, ctrl, alt, release = false, false, false, false
+      pcall(function()
+        shift = key_event:shift(); ctrl = key_event:ctrl() or key_event:alt()
+        release = key_event:release()
+      end)
+      if release then return 2 end
+      if kc == 0xFF1B or kc == 0xFF08 then      -- Esc / Backspace：清联想并吞键
+        ctx:clear()
+        return 1  -- kAccepted
+      end
+      -- 纯数字(无修饰)：选联想候选，但仅挂码后 TTL 内有效——
+      -- 点击别处后 rime 会话可能残留隐形 "'"（TSF 侧已清但没通知引擎），超时的数字先清再透传
+      local plain_digit = kc >= 0x30 and kc <= 0x39 and not shift and not ctrl
+      local stale = PRED_AT == 0 or (os.clock() - PRED_AT) > PRED_TTL
+      if plain_digit and not stale then
+        PRED_CHAIN = true   -- 本次上屏将来自数字选中：hook 据此豁免节奏门+加深链式预取
+        return 2  -- kNoop：交给 selector 按数字选联想
+      end
+      -- 其余任何键（字母/Shift符号/方向键/回车/Tab/空格/超时数字…）：
+      -- 先清联想再放行本键，绝不让 "'" 被兜底上屏或在其中移光标。
+      -- 空格不再快选第一候选：顶掉后空格正常落到应用（打出真实空格）。
+      ctx:clear()
+      return 2  -- kNoop：本键随后正常处理（符号照出、回车照换行、空格照打）
+    end
+    return 2  -- kNoop
+  end,
+}

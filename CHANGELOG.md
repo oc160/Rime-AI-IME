@@ -92,3 +92,41 @@
   - 关键修复：词尾追加 im_end 终止标记（v1 不刹车的根因）
   - 结果：复读 0%（基线 55%），词级输出，领域方向正确
 - 评测：`eval/predict_eval.py` + 验收集 `eval_domain_v2_boundary.jsonl`（300 条）
+
+## 2026-10-18: post-commit prediction shell + heap-traversal root cause fix
+
+**Prediction v2 (predict-v2 model wired into the shell)**
+- `tools/pred_win/pred_sidecar.py`: resident sidecar, file-handshake
+  (`pred_req.txt` / `pred_resp.txt`), owns llama-server lifecycle
+  (CPU-only, `-t 4`, spawned BELOW_NORMAL priority so typing always wins),
+  warmup query, self-heal on 2 consecutive ask failures.
+- Prompt/decode recipe identical to the offline acceptance run
+  (temperature 0, max_tokens 32, thinking off, repeat-filter per HANDOFF §4).
+- Model word pinned to slot 1 (`智`), table words tail (`联`), full fallback
+  ladder to the bigram table when the model is down.
+
+**Prediction shell hardening (v9-v11)**
+- Arm only on genuinely NEW commits (PRED_SEEN) — weasel focus-loss
+  ClearComposition used to re-arm the trigger char instantly.
+- CJK-only arming (first byte E4-E9): fullwidth punct like （ no longer
+  ghost-arms; predictions only load when the table actually has entries.
+- Adaptive rhythm gate: arm only when the commit key gap exceeds
+  2.5× the rolling median of the last 10 inter-key intervals
+  (clamped 0.35-0.9s); flow typing never arms. Digit chains exempt.
+- Space dismisses (no quick-select); digits valid only within 6s TTL
+  (stale invisible compositions after same-document clicks can't eat keys).
+
+**Zero-blocking keystroke path**
+- Config read once per session; sidecar response file read only when
+  requests are pending; rerank/predict queries fire only at real pauses
+  (inter-key gap ≥ 0.45s) — zero queries during flow typing.
+
+**Root cause of the residual "sticky typing" (the big one)**
+- Symptom: ~127ms per keystroke INSIDE the engine (M0/M1/M2 log-timestamp
+  instrumentation, flag-gated via `pred_measure.flag`, kept in rime.lua).
+- Bisected to the bigram pairs table parsed into lua objects: librime-lua
+  walks the whole lua heap on every keystroke; 113k lines as ~500k small
+  objects cost +120ms/key. Same data as ONE string: +0ms.
+- Fix: pairs stay a single string; lookups are plain byte `find` + 64-key
+  LRU cache, only ever executed at pauses/arm time, never on the hot path.
+- Result: 127ms → 1.6ms/key, identical to a no-lua build.
