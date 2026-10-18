@@ -104,7 +104,9 @@ Sharing the machine with other GPU jobs? `tools/watcher_train.py` waits for them
 ## Credits & license
 
 - **[FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)** (MIT): the predecessor of this project. The core idea "an LLM judges the top-5 candidates" and the prompt format come from it; `rime.lua` keeps the lineage note in its header
-- **[iDvel/rime-ice](https://github.com/iDvel/rime-ice)** (GPL-3.0): the Mist pinyin dictionary and schema. **Not bundled in this repo** — obtain it yourself
+- **[iDvel/rime-ice](https://github.com/iDvel/rime-ice)** (GPL-3.0): the Mist pinyin dictionary and schema (Windows side). **Not bundled in this repo** — obtain it yourself
+- **[osfans/Trime](https://github.com/osfans/trime)** (GPL-3.0): the Android host IME; the mobile port is built as a patch over its v3.3.12. **Not bundled in this repo**
+- **[SivanLaai/rime-pure](https://github.com/SivanLaai/rime-pure)** (GPL-3.0): source of the 9-key (T9) schema and keyboard theme. **Not bundled** — see [android/BUILD.md](android/BUILD.md)
 - **[Transformers4IME](https://github.com/VisualJoyce/Transformers4IME) / [RIME-LMDG](https://github.com/amzxyz/RIME-LMDG)**: references for Phase C and the grammar-model layer
 - Code in this repo: MIT (see [LICENSE](LICENSE))
 

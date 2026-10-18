@@ -156,7 +156,9 @@ python training/train_student.py \
 ## 致谢与许可证
 
 - **[FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)**（MIT）：本项目的前身。核心思路「LLM 裁判 Top5 候选」与提示词格式源自它
-- **[iDvel/rime-ice](https://github.com/iDvel/rime-ice)**（GPL-3.0）：雾凇拼音词库与方案。**不入本仓库**，请自行获取
+- **[iDvel/rime-ice](https://github.com/iDvel/rime-ice)**（GPL-3.0）：雾凇拼音词库与方案（Windows 端）。**不入本仓库**，请自行获取
+- **[osfans/Trime](https://github.com/osfans/trime)**（同文输入法，GPL-3.0）：Android 宿主输入法，手机端基于其 v3.3.12 补丁部署。**不入本仓库**
+- **[SivanLaai/rime-pure](https://github.com/SivanLaai/rime-pure)**（GPL-3.0）：九宫格方案（clover_jiugong）与同文风键盘主题的来源。**不入本仓库**，见 [android/BUILD.md](android/BUILD.md) 获取指引
 - **[metasequoiaime/chinese-ime-lm](https://github.com/metasequoiaime/chinese-ime-lm)**（Apache-2.0）：25M/4M 字符级打分器权重与格式规范——本项目学生模型的底座
 - **[Transformers4IME](https://github.com/VisualJoyce/Transformers4IME) / [RIME-LMDG](https://github.com/amzxyz/RIME-LMDG)**：Phase C 早期参考
 - 本仓库代码：MIT（见 [LICENSE](LICENSE)）
