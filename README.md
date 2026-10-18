@@ -1,8 +1,15 @@
-# rime-llm-reranker-win
+# rime-llm-reranker
 
 **简体中文** | [English](README.en.md)
 
-**Windows 版 Rime 输入法 LLM 候选词重排 + 联想**：词库出候选，本地模型根据上下文把最合适的词顶到第一候选；上屏后预测下一个词作为联想提示——打字路径零阻塞（异步文件握手架构）。
+**Rime 输入法 LLM 候选词重排 + 联想，双端**：词库出候选，本地模型根据上下文把最合适的词顶到第一候选；上屏后预测下一个词作为联想提示——打字路径零阻塞。
+
+| 端 | 方案 | 文档 |
+|---|---|---|
+| **Windows**（Weasel/小狼毫 + 雾凇拼音） | rime.lua v8 异步架构（sidecar 文件握手） | 本 README 下文 |
+| **Android**（Trime/同文 v3.3.12） | 进程内 C++ 推理（4M 模型 libime.so），支持九宫格 | [`android/BUILD.md`](android/BUILD.md) |
+
+两端共享同一套重排核心（惰性候选枚举、异步查询/回收、置信度门槛、数据飞轮），修复互向移植。
 
 基于 [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)（macOS 版，MIT）移植起步，架构已重构为异步 sidecar，并附带完整的任务微调训练管线（重排 + 联想两条线）。
 
