@@ -110,5 +110,3 @@ Sharing the machine with other GPU jobs? `tools/watcher_train.py` waits for them
 
 ## Documentation (Chinese)
 
-- [Incident report I: four full-desktop freezes on the 2060 host](docs/incident-2026-10-12-2060-host.md)
-- [Incident report II: the T10 real-typing freeze and the async-rewrite decision](docs/incident-2026-10-13-t10-typing.md)
