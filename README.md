@@ -7,15 +7,30 @@
 | 端 | 方案 | 文档 |
 |---|---|---|
 | **Windows**（Weasel/小狼毫 + 雾凇拼音） | rime.lua v8 异步架构（sidecar 文件握手） | 本 README 下文 |
-| **Android**（Trime/同文 v3.3.12） | 进程内 C++ 推理（4M 模型 libime.so），支持九宫格 | [`android/BUILD.md`](android/BUILD.md) |
+| **Android**（Trime 定制版 v3.3.13） | 进程内 C++ 推理（4M 模型 libime.so）；九键 + Gboard 式左侧拼音栏 | [`android/BUILD.md`](android/BUILD.md) |
 
 两端共享同一套重排核心（惰性候选枚举、异步查询/回收、置信度门槛、数据飞轮），修复互向移植。
 
 基于 [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)（macOS 版，MIT）移植起步，架构已重构为异步 sidecar，并附带完整的任务微调训练管线（重排 + 联想两条线）。
 
+> [下载 Android APK](https://github.com/oc160/Rime-AI-IME/releases/tag/android-v0.2.0) —— Trime 定制版：九键 + 左侧拼音栏 + 空闲符号栏，已内置 4M 推理库（arm64-v8a）
+>
 > [下载预训练模型](https://github.com/oc160/Rime-AI-IME/releases/tag/v0.1.0-model)（重排 0.8B / 25M 学生 / 联想 0.8B，共三个 GGUF）
 
 > **状态**：v1 正式版。双端（Windows / Android）真机长期使用中；击键路径零阻塞架构经多机实测验证。推理服务异常时自动回退词库原生排序，打字无感。方案选单（F4/Ctrl+`）随时「AI关/AI开」。
+
+## 下载与安装
+
+**Android（开箱即用）**
+1. 下载 [`Rime-AI-IME-android-v0.2.0.apk`](https://github.com/oc160/Rime-AI-IME/releases/tag/android-v0.2.0)，覆盖安装（与旧版同签名，数据保留）
+2. 打开「同文输入法」→ 向导里选**应用专属存储**→ 完成
+3. 设置 → 存储 → 部署；完成后切一次输入法（部署不会热替换已存在的会话）
+4. 九键左侧即拼音栏：输入中列候选音节（点选分词），空闲时列常用符号（成对符号自动补全）
+
+APK 由 [`oc160/trime` 的 `t9-pinyin-bar` 分支](https://github.com/oc160/trime/tree/t9-pinyin-bar)构建（GPL-3.0），
+改动文件随 Release 的 `source.zip` 提供。
+
+**Windows**：见下方「快速开始」。
 
 ## 架构
 
