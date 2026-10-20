@@ -1,4 +1,4 @@
-# rime-llm-reranker
+# Rime-AI-IME
 
 [简体中文](README.md) | **English**
 

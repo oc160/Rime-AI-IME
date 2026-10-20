@@ -21,3 +21,4 @@ tools/rime-ice/
 tools/llama/
 tools/llama.cpp/
 tools/llama-cuda/
+.trime-src/

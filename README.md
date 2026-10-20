@@ -1,4 +1,4 @@
-# rime-llm-reranker
+# Rime-AI-IME
 
 **简体中文** | [English](README.en.md)
 
@@ -13,7 +13,7 @@
 
 基于 [FuJiK0/rime-llm-reranker](https://github.com/FuJiK0/rime-llm-reranker)（macOS 版，MIT）移植起步，架构已重构为异步 sidecar，并附带完整的任务微调训练管线（重排 + 联想两条线）。
 
-> [下载预训练模型](https://github.com/oc160/rime-llm-reranker/releases/tag/v0.1.0-model)（重排 0.8B / 25M 学生 / 联想 0.8B，共三个 GGUF）
+> [下载预训练模型](https://github.com/oc160/Rime-AI-IME/releases/tag/v0.1.0-model)（重排 0.8B / 25M 学生 / 联想 0.8B，共三个 GGUF）
 
 > **状态**：v1 正式版。双端（Windows / Android）真机长期使用中；击键路径零阻塞架构经多机实测验证。推理服务异常时自动回退词库原生排序，打字无感。方案选单（F4/Ctrl+`）随时「AI关/AI开」。
 
@@ -52,7 +52,7 @@
 
 ## 快速开始
 
-前置：[小狼毫 Weasel](https://github.com/rime/weasel) + Python 3.10+ + [llama.cpp](https://github.com/ggml-org/llama.cpp)（llama-server）+ [Release 里的 GGUF 模型](https://github.com/oc160/rime-llm-reranker/releases/tag/v0.1.0-model)。
+前置：[小狼毫 Weasel](https://github.com/rime/weasel) + Python 3.10+ + [llama.cpp](https://github.com/ggml-org/llama.cpp)（llama-server）+ [Release 里的 GGUF 模型](https://github.com/oc160/Rime-AI-IME/releases/tag/v0.1.0-model)。
 
 ```bash
 # 1. 取得雾凇拼音（GPL-3.0 项目请自行获取）
