@@ -93,7 +93,8 @@ def main():
                     help="首选token概率低于此值不重排（0=关闭门槛）")
     ap.add_argument("--log", default="")
     args = ap.parse_args()
-    sys.stdout.reconfigure(encoding="utf-8")
+    if sys.stdout:  # pythonw 无控制台时 stdout 为 None，reconfigure/print 都会崩
+        sys.stdout.reconfigure(encoding="utf-8")
     os.makedirs(args.dir, exist_ok=True)
     if args.backend == "local":
         backend = make_local_backend(args.model, args.conf_threshold)
@@ -106,7 +107,8 @@ def main():
 
     def log(msg):
         line = f"{time.strftime('%H:%M:%S')} {msg}"
-        print(line, flush=True)
+        if sys.stdout:
+            print(line, flush=True)
         if logf:
             logf.write(line + "\n"); logf.flush()
 
