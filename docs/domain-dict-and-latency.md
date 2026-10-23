@@ -76,5 +76,5 @@ table.bin 60,664,120 → 60,664,056（-64B ≈ 2 条 diao 码）。
   `LuaTranslation::Next error: bad argument #2 expected Translation`，候选全空。）
 - **实测**：A 605/670ms → **2.5ms**；a 148/163ms → **3ms**；
   候选回归零变化（biandun→1.边墩、jiaoshen→2.校审、翻页直通完整）。
-- 原版 v8 全量抽干 lua 在 tools/rime-llm-reranker-win 仓库留档。
+- 原版 v8 全量抽干 lua 在 tools/Rime-AI-IME 仓库留档。
 - 部署：rime.lua 替换 + WeaselServer 重启（16:33，PID 8608，日志 0 错误）。

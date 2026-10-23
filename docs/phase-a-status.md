@@ -19,7 +19,7 @@
 5. **一次部署升级包**：置信度门槛（sidecar 读 logprob，低置信不干预）
    + max_preedit_len 10→30（整句候选重排）+ 腾讯词库恢复 + switcher 加「AI重排」开关
 6. 黄金集烟测（0.8B v1 vs 4M/25M 同台）→ 预热 → **交接用户实测**
-7. **GitHub 发布**（oc160/rime-llm-reranker-win）：v8 最终代码 + 训练成果数字
+7. **GitHub 发布**（oc160/Rime-AI-IME）：v8 最终代码 + 训练成果数字
    + 隐私脱敏硬闸（*.log/rime_train.jsonl/backup_*/主机名/第三方模型名绝不上传）
    + CHANGELOG + v0.1.0 tag + 致谢补 chinese-ime-lm 与 LIME
 8. Phase C 立项判据：chinese-ime-lm 黄金集成绩 vs 蒸馏 0.8B → 直接采用 / 自训 / PinyinGPT 备胎
@@ -59,7 +59,7 @@
 - **换模型只改 `autostart_config.json` 的 gguf 字段**，注册表和脚本都不动
 - 兜底：任一服务启动失败 → v8 安全直通，打字无影响（日志 reports/autostart.log）
 
-## GitHub 开源仓库（用户指定：https://github.com/oc160/rime-llm-reranker-win）
+## GitHub 开源仓库（用户指定：https://github.com/oc160/Rime-AI-IME）
 
 仓库现状：MIT、双语 README、目录 docs/eval/rime/tools/training、5 commits——结构已对齐 v8，内容待同步今晚最终版。
 
